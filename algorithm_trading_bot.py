@@ -27,7 +27,7 @@ import math
 
 obj.position()
 
-obj.ltpData('NFO','BANKNIFTY24JUN21FUT','48506')
+obj.ltpData('NFO','BANKNIFTY24JUN21FUT','48506') # NFO Nifty Future Options
 
 
 
@@ -73,7 +73,7 @@ def getTokenInfo (symbol, exch_seg ='NSE',instrumenttype='OPTIDX',strike_price =
     elif exch_seg == 'NFO' and (instrumenttype == 'OPTSTK' or instrumenttype == 'OPTIDX'):
         return df[(df['exch_seg'] == 'NFO') & (df['expiry']==expiry_day) &  (df['instrumenttype'] == instrumenttype) & (df['name'] == symbol) & (df['strike'] == strike_price) & (df['symbol'].str.endswith(pe_ce))].sort_values(by=['expiry'])
 
-expiry_day = date(YYYY,M,DD)
+expiry_day = date(YYYY,M,DD) #manually enter expiry date
 
 symbol = 'BANKNIFTY'
 
@@ -81,14 +81,21 @@ spot_token = getTokenInfo(symbol).iloc[0]['token']
 ltpInfo = obj.ltpData('NSE',symbol,spot_token)
 indexLtp = ltpInfo['data']['ltp']
 indexLtp
+#ltp gives the strike price
 
-ATMStrike = math.ceil(indexLtp/100)*100
-ATMStrike
+if(ltp%100<50){
+    ATMStrike = math.floor(indexLtp/100)*100
+    ATMStrike
+} #logic : e.g. ltp -> 25324 : rounded to 25300 and if ltp -> 25351 : rounded to 25400
+else{
+    ATMStrike = math.ceil(indexLtp/100)*100
+    ATMStrike
+}
 
-ce_strike_symbol = getTokenInfo(symbol,'NFO','OPTIDX',ATMStrike,'CE',expiry_day).iloc[0]
+ce_strike_symbol = getTokenInfo(symbol,'NFO','OPTIDX',ATMStrike,'CE',expiry_day).iloc[0]# if strategy is long strandle, replace ATMStrike with ATMStrike+200
 ce_strike_symbol
 
-pe_strike_symbol = getTokenInfo(symbol,'NFO','OPTIDX',ATMStrike,'PE',expiry_day).iloc[0]
+pe_strike_symbol = getTokenInfo(symbol,'NFO','OPTIDX',ATMStrike,'PE',expiry_day).iloc[0]# if strategy is long strandle, replace ATMStrike with ATMStrike-200
 pe_strike_symbol
 
 place_order(ce_strike_symbol['token'],ce_strike_symbol['symbol'],ce_strike_symbol['lotsize'],'SELL','MARKET',0,'NORMAL','NFO')
