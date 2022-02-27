@@ -10,26 +10,38 @@ Original file is located at
 import warnings
 warnings.filterwarnings('ignore')
 
-# from smartapi import SmartConnect
+!pip install smartapi-python
+!pip install websocket
+
+from smartapi import SmartConnect
 import time
 import requests
 import pandas as pd
 from datetime import datetime,date
 import math
 
-# obj=SmartConnect(api_key=apikey)
-# data = obj.generateSession(username,pwd)
-# data
-# #refreshToken= data['data']['refreshToken']
-# #feedToken=obj.getfeedToken()
-# #userProfile= obj.getProfile(refreshToken)
-# #userProfile
+apikey = 'PTSRDyQB'
+username = 'aaoaa1020'
+pwd = 'Prafful.097'
+
+obj=SmartConnect(api_key=apikey)
+data = obj.generateSession(username,pwd)
+print(data)
+data = obj.generateSession(username,pwd)
+refreshToken= data['data']['refreshToken']
+
+feedToken=obj.getfeedToken()
+
+userProfile= obj.getProfile(refreshToken)
+
+userProfile
 
 obj.position()
 
-obj.ltpData('NFO','BANKNIFTY24JUN21FUT','48506') # NFO Nifty Future Options
+#obj.ltpData('NFO','BANKNIFTY03MAR2239700PE','35593') # NFO Nifty Future Options
+#obj.ltpData('NFO','BANKNIFTY24JUN21FUT','48506')
 
-
+obj.ltpData('NFO','BANKNIFTY03MAR2236900PE','57294')
 
 def place_order(token,symbol,qty,buy_sell,ordertype,price,variety= 'NORMAL',exch_seg='NSE',triggerprice=0):
     try:
@@ -40,9 +52,9 @@ def place_order(token,symbol,qty,buy_sell,ordertype,price,variety= 'NORMAL',exch
             "transactiontype": buy_sell,
             "exchange": exch_seg,
             "ordertype": ordertype,
-            "producttype": "INTRADAY",
+            "producttype": "MARKET",
             "duration": "DAY",
-            "price": price,
+            "price": "0",
             "squareoff": "0",
             "stoploss": "25",
             "quantity": qty,
@@ -52,45 +64,60 @@ def place_order(token,symbol,qty,buy_sell,ordertype,price,variety= 'NORMAL',exch
         orderId=obj.placeOrder(orderparams)
         print("The order id is: {}".format(orderId))
     except Exception as e:
-        print("Order placement failed: {}".format(e.message))
+        print("Order placement failed: {}".format(e))
 
 url = 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json'
 d = requests.get(url).json()
 token_df = pd.DataFrame.from_dict(d)
 token_df['expiry'] = pd.to_datetime(token_df['expiry']).apply(lambda x: x.date())
 token_df = token_df.astype({'strike': float})
-#token_df = token_df[(token_df['name'] == 'BANKNIFTY') & (token_df['instrumenttype'] == 'OPTIDX') & (token_df['expiry']==date(2021,6,10)) ]
-token_df
+#token_df = token_df[(token_df['name'] == 'BANKNIFTY') & (token_df['instrumenttype'] == 'OPTIDX') & (token_df['expiry']==date(2022,3,3)) ]
+token_df.head
 
-def getTokenInfo (symbol, exch_seg ='NSE',instrumenttype='OPTIDX',strike_price = '',pe_ce = 'CE',expiry_day = None):
+a = token_df[(token_df['name'] == 'BANKNIFTY') & (token_df['instrumenttype'] == 'OPTIDX') & (token_df['expiry']==date(2022,3,3)) ]
+a.head(100)
+
+def getTokenInfo (symbol, exch_seg ='NFO',instrumenttype='OPTSTK',strike_price = '',pe_ce = 'PE',expiry_day = None):
     df = token_df
     strike_price = strike_price*100
-    if exch_seg == 'NSE':
-        eq_df = df[(df['exch_seg'] == 'NSE') ]
-        return eq_df[eq_df['name'] == symbol]
-    elif exch_seg == 'NFO' and ((instrumenttype == 'FUTSTK') or (instrumenttype == 'FUTIDX')):
-        return df[(df['exch_seg'] == 'NFO') & (df['instrumenttype'] == instrumenttype) & (df['name'] == symbol)].sort_values(by=['expiry'])
-    elif exch_seg == 'NFO' and (instrumenttype == 'OPTSTK' or instrumenttype == 'OPTIDX'):
-        return df[(df['exch_seg'] == 'NFO') & (df['expiry']==expiry_day) &  (df['instrumenttype'] == instrumenttype) & (df['name'] == symbol) & (df['strike'] == strike_price) & (df['symbol'].str.endswith(pe_ce))].sort_values(by=['expiry'])
 
-expiry_day = date(YYYY,M,DD) #manually enter expiry date
+    if exch_seg == 'NFO':
+        eq_df = df[(df['exch_seg'] == 'NFO') ]
+        return eq_df[eq_df['name'] == symbol]
+
+    # if exch_seg == 'NSE':
+    #     eq_df = df[(df['exch_seg'] == 'NSE') ]
+    #     return eq_df[eq_df['name'] == symbol]
+    # elif exch_seg == 'NFO' and ((instrumenttype == 'FUTSTK') or (instrumenttype == 'FUTIDX')):
+    #     return df[(df['exch_seg'] == 'NFO') & (df['instrumenttype'] == instrumenttype) & (df['name'] == symbol)].sort_values(by=['expiry'])
+    # elif exch_seg == 'NFO' and (instrumenttype == 'OPTSTK' or instrumenttype == 'OPTIDX'):
+    #     return df[(df['exch_seg'] == 'NFO') & (df['expiry']==expiry_day) &  (df['instrumenttype'] == instrumenttype) & (df['name'] == symbol) & (df['strike'] == strike_price) & (df['symbol'].str.endswith(pe_ce))].sort_values(by=['expiry'])
+
+expiry_day = date(2022,3,3) #manually enter expiry date
 
 symbol = 'BANKNIFTY'
 
 spot_token = getTokenInfo(symbol).iloc[0]['token']
-ltpInfo = obj.ltpData('NSE',symbol,spot_token)
+spot_token
+
+ltpInfo = obj.ltpData('NFO','BANKNIFTY03MAR2239700PE',spot_token)
+ltpInfo
 indexLtp = ltpInfo['data']['ltp']
 indexLtp
 #ltp gives the strike price
 
-if(ltp%100<50){
+if(indexLtp % 100<25):
     ATMStrike = math.floor(indexLtp/100)*100
-    ATMStrike
-} #logic : e.g. ltp -> 25324 : rounded to 25300 and if ltp -> 25351 : rounded to 25400
-else{
+    ATMStrike #logic : e.g. ltp -> 25324 : rounded to 25300 and if ltp -> 25351 : rounded to 25400
+elif(indexLtp % 100>25 and indexLtp %100<50):
+    ATMStrike = (math.floor(indexLtp/100)*100)+50
+else:
     ATMStrike = math.ceil(indexLtp/100)*100
     ATMStrike
-}
+print(ATMStrike)
+
+
+# 25 -> 50
 
 ce_strike_symbol = getTokenInfo(symbol,'NFO','OPTIDX',ATMStrike,'CE',expiry_day).iloc[0]# if strategy is long strandle, replace ATMStrike with ATMStrike+200
 ce_strike_symbol
@@ -101,3 +128,4 @@ pe_strike_symbol
 place_order(ce_strike_symbol['token'],ce_strike_symbol['symbol'],ce_strike_symbol['lotsize'],'SELL','MARKET',0,'NORMAL','NFO')
 
 place_order(pe_strike_symbol['token'],pe_strike_symbol['symbol'],pe_strike_symbol['lotsize'],'SELL','MARKET',0,'NORMAL','NFO')
+
